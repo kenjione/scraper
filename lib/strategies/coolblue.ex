@@ -2,10 +2,12 @@ defmodule Strategies.CoolBlue do
   alias ChromeRemoteInterface.RPC.DOM
 
   def data(page_pid) do
-    rootId = fetch_root_node(page_pid)
+    wait_for_loading(page_pid)
 
+    {:ok, %{"result" => %{"root" => root}}} =
+      DOM.getDocument(page_pid)
     {:ok, %{"result" => %{"nodeIds" => ids}}} =
-      DOM.querySelectorAll(page_pid, %{nodeId: rootId, selector: ".product"})
+      DOM.querySelectorAll(page_pid, %{nodeId: root["nodeId"], selector: ".product"})
 
     Enum.map(ids, fn id ->
       Enum.join([title(page_pid, id), rating(page_pid, id), price(page_pid, id), image(page_pid, id)], " | ")
@@ -65,26 +67,22 @@ defmodule Strategies.CoolBlue do
     |> Map.get("src")
   end
 
-  def fetch_root_node(page_pid, len \\ 0) do
-    {:ok, %{"result" => %{"root" => root}}} = DOM.getDocument(page_pid)
-    {:ok, %{"result" => %{"outerHTML" => html}}} = DOM.getOuterHTML(page_pid, %{nodeId: root["nodeId"]})
-
-    new_len = String.length(html)
-
-    if new_len == len do
-      root["nodeId"]
-    else
-      fetch_root_node(page_pid, new_len)
-    end
+  def wait_for_loading(page_pid, len \\ 0) do
+    ChromeRemoteInterface.PageSession.subscribe(page_pid, "Page.loadEventFired")
+    receive do
+      {:chrome_remote_interface, "Page.loadEventFired", %{"method" => "Page.loadEventFired"}} -> :ok
+       ___ -> wait_for_loading(page_pid)
+     end
   end
 
   def pages(url) do
     [
       "https://www.coolblue.nl/laptops?pagina=1",
-      "https://www.coolblue.nl/laptops?pagina=2",
-      "https://www.coolblue.nl/laptops?pagina=3",
-      "https://www.coolblue.nl/laptops?pagina=4",
-      "https://www.coolblue.nl/laptops?pagina=5"
+      # "https://www.coolblue.nl/mobiele-telefoons",
+      # "https://www.coolblue.nl/laptops?pagina=2",
+      # "https://www.coolblue.nl/laptops?pagina=3",
+      # "https://www.coolblue.nl/laptops?pagina=4",
+      # "https://www.coolblue.nl/laptops?pagina=5"
     ]
   end
 end
