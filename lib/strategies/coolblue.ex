@@ -1,5 +1,5 @@
 defmodule Strategies.CoolBlue do
-  alias ChromeRemoteInterface.RPC.DOM
+  alias ChromeRemoteInterface.{RPC.DOM, RPC.Page, PageSession}
 
   def data(url, page_pid) do
     navigate(url, page_pid)
@@ -95,10 +95,12 @@ defmodule Strategies.CoolBlue do
   end
 
   defp navigate(url, page_pid) do
-    ChromeRemoteInterface.PageSession.subscribe(page_pid, "Page.loadEventFired")
-    ChromeRemoteInterface.RPC.Page.navigate(page_pid, %{url: url})
-
+    PageSession.subscribe(page_pid, "Page.loadEventFired")
+    Page.navigate(page_pid, %{url: url})
     wait_for_loading(page_pid)
+    PageSession.unsubscribe(page_pid, "Page.loadEventFired")
+
+    page_pid
   end
 
   defp wait_for_loading(page_pid) do
@@ -121,7 +123,6 @@ defmodule Strategies.CoolBlue do
 
   def fetch_last_page(page_pid) do
     page_pid
-    # |> screenshot()
     |> fetch_root()
     |> fetch_all(page_pid, ".pagination__item:not(.pagination__item--arrow)")
     |> List.last
@@ -132,8 +133,8 @@ defmodule Strategies.CoolBlue do
     |> String.to_integer
   end
 
-  defp screenshot(page_pid) do
-    {:ok, data} = ChromeRemoteInterface.RPC.Page.captureScreenshot(page_pid)
+  def screenshot(page_pid) do
+    {:ok, data} = Page.captureScreenshot(page_pid)
     {:ok, data} = Base.decode64(data["result"]["data"])
     File.write("./file.jpg", data, [:binary])
 

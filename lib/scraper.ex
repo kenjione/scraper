@@ -2,7 +2,7 @@ defmodule Scraper do
   use Task
 
   def start_link(urls \\ ["https://www.coolblue.nl/laptops", "https://www.coolblue.nl/mobiele-telefoons"]) do
-    fetch_pages_pids
+    fetch_pages_pids()
     |> iterate(urls)
   end
 
@@ -52,7 +52,7 @@ defmodule Scraper do
       page_pid = Enum.at(pages_pids, index)
       Task.async(__MODULE__, :scrape, [url, strategy, page_pid])
     end)
-    |> Enum.map(&(Task.await(&1, 10000)))
+    |> Enum.map(&(Task.await(&1, 30000)))
   end
 
   def scrape(url, strategy, page_pid) do
