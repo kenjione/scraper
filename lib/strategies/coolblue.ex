@@ -9,8 +9,8 @@ defmodule Strategies.CoolBlue do
 
     Enum.map(ids, fn id ->
       Enum.join([title(page_pid, id), rating(page_pid, id), price(page_pid, id), image(page_pid, id)], " | ")
-      |> IO.inspect
     end)
+    |> IO.inspect
   end
 
   def title(page_pid, root_id) do
@@ -76,5 +76,15 @@ defmodule Strategies.CoolBlue do
     else
       fetch_root_node(page_pid, new_len)
     end
+  end
+
+  def pages(url) do
+    [
+      "https://www.coolblue.nl/laptops?pagina=1",
+      "https://www.coolblue.nl/laptops?pagina=2",
+      "https://www.coolblue.nl/laptops?pagina=3",
+      "https://www.coolblue.nl/laptops?pagina=4",
+      "https://www.coolblue.nl/laptops?pagina=5"
+    ]
   end
 end
