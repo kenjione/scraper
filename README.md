@@ -2,9 +2,18 @@
 
 **This is a simple product scraper which scrapes a list of given product URLs. It scrapes 5 pages concurrently, grabbing data and writing that to stdout.**
 
-## HowTo
+# HowTo
+
+Make sure you run Google Chrome in headless mode
+
+```
+$ open -a Google\ Chrome --args --headless --disable-gpu --remote-debugging-port=9222
+```
+
+After that you can use the scraper.
 
 ```elixir
+$ iex -S mix
 iex(1)> Scraper.start_link(["https://www.coolblue.nl/laptops", "https://www.coolblue.nl/mobiele-telefoons"])
 
 ...
