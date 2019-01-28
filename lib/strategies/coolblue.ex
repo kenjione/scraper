@@ -1,9 +1,8 @@
 defmodule Strategies.CoolBlue do
   alias ChromeRemoteInterface.RPC.DOM
 
-  def data(page_pid) do
-    page_pid
-    |> wait_for_loading()
+  def data(url, page_pid) do
+    navigate(url, page_pid)
     |> fetch_root()
     |> fetch_products(page_pid)
     |> Enum.map(&fetch_props(&1, page_pid))
@@ -95,9 +94,14 @@ defmodule Strategies.CoolBlue do
     |> Map.get("src")
   end
 
-  defp wait_for_loading(page_pid) do
+  defp navigate(url, page_pid) do
     ChromeRemoteInterface.PageSession.subscribe(page_pid, "Page.loadEventFired")
+    ChromeRemoteInterface.RPC.Page.navigate(page_pid, %{url: url})
 
+    wait_for_loading(page_pid)
+  end
+
+  defp wait_for_loading(page_pid) do
     receive do
       {:chrome_remote_interface, "Page.loadEventFired", %{"method" => "Page.loadEventFired"}} -> page_pid
        ___ -> wait_for_loading(page_pid)
@@ -106,16 +110,18 @@ defmodule Strategies.CoolBlue do
 
   def pages(_url, []), do: []
   def pages(url, pages_pids) do
+    IO.inspect(url)
     page_pid = List.first(pages_pids)
-    ChromeRemoteInterface.RPC.Page.navigate(page_pid, %{url: url})
+    navigate("about:blank", page_pid)
+    navigate(url, page_pid)
 
     (1..fetch_last_page(page_pid))
     |> Enum.map(fn page_num -> "#{url}?pagina=#{page_num}" end)
   end
 
-  defp fetch_last_page(page_pid) do
+  def fetch_last_page(page_pid) do
     page_pid
-    |> wait_for_loading()
+    # |> screenshot()
     |> fetch_root()
     |> fetch_all(page_pid, ".pagination__item:not(.pagination__item--arrow)")
     |> List.last
@@ -124,6 +130,14 @@ defmodule Strategies.CoolBlue do
     |> List.flatten
     |> List.last
     |> String.to_integer
+  end
+
+  defp screenshot(page_pid) do
+    {:ok, data} = ChromeRemoteInterface.RPC.Page.captureScreenshot(page_pid)
+    {:ok, data} = Base.decode64(data["result"]["data"])
+    File.write("./file.jpg", data, [:binary])
+
+    page_pid
   end
 
   defp fetch_all(root_id, page_pid, selector) do

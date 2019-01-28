@@ -1,8 +1,7 @@
 defmodule Scraper do
   use Task
 
-  # def start_link(urls \\ ["https://www.coolblue.nl/laptops"]) do
-  def start_link(urls \\ ["https://www.coolblue.nl/mobiele-telefoons"]) do
+  def start_link(urls \\ ["https://www.coolblue.nl/laptops", "https://www.coolblue.nl/mobiele-telefoons"]) do
     fetch_pages_pids
     |> iterate(urls)
   end
@@ -53,12 +52,11 @@ defmodule Scraper do
       page_pid = Enum.at(pages_pids, index)
       Task.async(__MODULE__, :scrape, [url, strategy, page_pid])
     end)
-    |> Enum.map(&Task.await/1)
+    |> Enum.map(&(Task.await(&1, 10000)))
   end
 
   def scrape(url, strategy, page_pid) do
-    ChromeRemoteInterface.RPC.Page.navigate(page_pid, %{url: url})
-    strategy.data(page_pid)
+    strategy.data(url, page_pid)
   end
 
   defp open_pages(server) do
