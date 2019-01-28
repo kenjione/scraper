@@ -2,9 +2,8 @@ defmodule Strategies.CoolBlue do
   alias ChromeRemoteInterface.RPC.DOM
 
   def data(page_pid) do
-    wait_for_loading(page_pid)
-
     page_pid
+    |> wait_for_loading()
     |> fetch_root()
     |> fetch_products(page_pid)
     |> Enum.map(&fetch_props(&1, page_pid))
@@ -49,6 +48,13 @@ defmodule Strategies.CoolBlue do
     end
   end
 
+  defp get_node_attr(attrs, name) do
+    attrs
+    |> Enum.chunk_every(2)
+    |> Map.new(fn [k, v] -> {k, v} end)
+    |> Map.get(name)
+  end
+
   defp fetch_node_html(node_id, page_pid) do
     case DOM.getOuterHTML(page_pid, %{nodeId: node_id}) do
       {:ok, %{"result" => %{"outerHTML" => html }}} -> html
@@ -60,9 +66,7 @@ defmodule Strategies.CoolBlue do
     ".product__title"
     |> fetch_selector(node_id, page_pid)
     |> fetch_node_attrs(page_pid)
-    |> Enum.chunk_every(2)
-    |> Map.new(fn [k, v] -> {k, v} end)
-    |> Map.get("title")
+    |> get_node_attr("title")
   end
 
   # TODO: DRY
@@ -70,9 +74,7 @@ defmodule Strategies.CoolBlue do
     ".review-rating__icons"
     |> fetch_selector(node_id, page_pid)
     |> fetch_node_attrs(page_pid)
-    |> Enum.chunk_every(2)
-    |> Map.new(fn [k, v] -> {k, v} end)
-    |> Map.get("title")
+    |> get_node_attr("title")
   end
 
   defp price(node_id, page_pid) do
@@ -97,19 +99,37 @@ defmodule Strategies.CoolBlue do
     ChromeRemoteInterface.PageSession.subscribe(page_pid, "Page.loadEventFired")
 
     receive do
-      {:chrome_remote_interface, "Page.loadEventFired", %{"method" => "Page.loadEventFired"}} -> :ok
+      {:chrome_remote_interface, "Page.loadEventFired", %{"method" => "Page.loadEventFired"}} -> page_pid
        ___ -> wait_for_loading(page_pid)
      end
   end
 
-  def pages(url) do
-    [
-      # "https://www.coolblue.nl/laptops?pagina=1",
-      "https://www.coolblue.nl/mobiele-telefoons",
-      # "https://www.coolblue.nl/laptops?pagina=2",
-      # "https://www.coolblue.nl/laptops?pagina=3",
-      # "https://www.coolblue.nl/laptops?pagina=4",
-      # "https://www.coolblue.nl/laptops?pagina=5"
-    ]
+  def pages(_url, []), do: []
+  def pages(url, pages_pids) do
+    page_pid = List.first(pages_pids)
+    ChromeRemoteInterface.RPC.Page.navigate(page_pid, %{url: url})
+
+    (1..fetch_last_page(page_pid))
+    |> Enum.map(fn page_num -> "#{url}?pagina=#{page_num}" end)
+  end
+
+  defp fetch_last_page(page_pid) do
+    page_pid
+    |> wait_for_loading()
+    |> fetch_root()
+    |> fetch_all(page_pid, ".pagination__item:not(.pagination__item--arrow)")
+    |> List.last
+    |> fetch_node_html(page_pid)
+    |> (&Regex.scan(~r/>(\d*)</, &1)).()
+    |> List.flatten
+    |> List.last
+    |> String.to_integer
+  end
+
+  defp fetch_all(root_id, page_pid, selector) do
+    case DOM.querySelectorAll(page_pid, %{nodeId: root_id, selector: selector}) do
+      {:ok, %{"result" => %{"nodeIds" => ids}}} -> ids
+      {:error, __} -> []
+    end
   end
 end

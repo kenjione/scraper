@@ -24,7 +24,7 @@ defmodule Scraper do
   end
 
   defp scrape_with_strategy(strategy, url, pages_pids) do
-    strategy.pages(url)
+    strategy.pages(url, pages_pids)
     |> Enum.chunk_every(5)
     |> Enum.each(&(scrape_chunk(strategy, &1, pages_pids)))
   end
@@ -49,10 +49,11 @@ defmodule Scraper do
   defp scrape_chunk(strategy, chunk, pages_pids) do
     chunk
     |> Enum.with_index
-    |> Enum.each(fn {url, index} ->
+    |> Enum.map(fn {url, index} ->
       page_pid = Enum.at(pages_pids, index)
-      Task.start_link(__MODULE__, :scrape, [url, strategy, page_pid])
+      Task.async(__MODULE__, :scrape, [url, strategy, page_pid])
     end)
+    |> Enum.map(&Task.await/1)
   end
 
   def scrape(url, strategy, page_pid) do
