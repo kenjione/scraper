@@ -50,13 +50,9 @@ defmodule Scraper do
     |> Enum.with_index
     |> Enum.map(fn {url, index} ->
       page_pid = Enum.at(pages_pids, index)
-      Task.async(__MODULE__, :scrape, [url, strategy, page_pid])
+      Task.async(strategy, :data, [url, page_pid])
     end)
     |> Enum.map(&(Task.await(&1, 30000)))
-  end
-
-  def scrape(url, strategy, page_pid) do
-    strategy.data(url, page_pid)
   end
 
   defp open_pages(server) do
