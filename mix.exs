@@ -21,7 +21,7 @@ defmodule Scraper.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:chrome_remote_interface, git: "https://github.com/marvelm/chrome-remote-interface.git"}
+      {:chrome_remote_interface, git: "https://github.com/kenjione/chrome-remote-interface.git"}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
     ]
